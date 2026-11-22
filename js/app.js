@@ -35,8 +35,16 @@
         },
         cachedMatches: [],
         lbTab: 'students',
-        touchKb: null
+        touchKb: null,
+        pinTouchKb: null,
+        teacherTouchKb: null
     };
+
+    let teacherPanelUnlocked = false;
+    let pendingPinAction = null;
+    let pinFailedAttempts = 0;
+    let pinLockoutUntilMs = 0;
+    let pinLockoutTimerId = null;
 
     const dom = {};
 
@@ -70,7 +78,11 @@
             'lbStatMatches', 'lbStatStudents', 'lbStatPending', 'btnLbSync',
             'btnLbRefresh', 'btnLbExport', 'btnLbClear', 'lbTableWrap',
             'modalTeacher', 'cfgStatusDot', 'cfgStatusText', 'txtFirebaseConfig',
-            'inputTeacherPin', 'cfgFeedback', 'btnCfgSaveTest', 'btnCfgCopyLink', 'btnCfgReset'
+            'inputTeacherPin', 'btnToggleTeacherPinKb', 'teacherTouchKeyboardContainer',
+            'cfgFeedback', 'btnCfgSaveTest', 'btnCfgCopyLink', 'btnCfgReset',
+            'modalTeacherPin', 'teacherPinForm', 'pinPromptReason', 'inputPinPrompt',
+            'btnPinToggleEye', 'pinPromptError', 'pinKeypad', 'btnPinFullKb',
+            'pinTouchKeyboardContainer', 'btnPinSubmit'
         ];
         for (const id of ids) {
             dom[id] = $(id);
@@ -93,6 +105,8 @@
         dom.inputPlayer1.placeholder = t('setup_player1_placeholder');
         dom.inputPlayer2.placeholder = t('setup_player2_placeholder');
         dom.lbSearchInput.placeholder = t('lb_search_placeholder');
+        dom.inputTeacherPin.placeholder = t('cfg_pin_placeholder');
+        dom.inputPinPrompt.placeholder = t('pin_input_placeholder');
         updateDbStatusUI();
         if (state.view === 'game' && state.engine) {
             renderGameUI();
@@ -132,6 +146,25 @@
         $(id).classList.add('hidden');
         if (id === 'modalSetup' && state.touchKb) {
             state.touchKb.hide();
+        }
+        if (id === 'modalTeacher') {
+            teacherPanelUnlocked = false;
+            dom.txtFirebaseConfig.value = '';
+            dom.inputTeacherPin.value = '';
+            dom.inputTeacherPin.type = 'password';
+            dom.cfgFeedback.classList.add('hidden');
+            state.teacherTouchKb?.hide();
+        }
+        if (id === 'modalTeacherPin') {
+            pendingPinAction = null;
+            dom.inputPinPrompt.value = '';
+            dom.inputPinPrompt.type = 'password';
+            dom.pinPromptError.classList.add('hidden');
+            state.pinTouchKb?.hide();
+            if (pinLockoutTimerId) {
+                clearInterval(pinLockoutTimerId);
+                pinLockoutTimerId = null;
+            }
         }
     }
 
@@ -1201,38 +1234,158 @@
         }
     }
 
-    async function handleClearRecords() {
-        const pin = window.prompt(t('lb_clear_confirm_pin'));
-        if (pin === null) return;
-        if (!DB.verifyTeacherPin(pin)) {
-            window.alert(t('lb_wrong_pin'));
-            return;
-        }
+    async function performClearLocalRecords() {
         DB.clearLocalRecords();
         await reloadLeaderboardData();
         refreshMenuStats();
-        window.alert(t('lb_cleared_msg'));
+        showToast(t('lb_cleared_msg'));
+    }
+
+    function handleClearRecords() {
+        requestTeacherUnlock('clear', performClearLocalRecords);
+    }
+
+    // ==================== TEACHER PIN GATE ====================
+    function showPinError(msg) {
+        dom.pinPromptError.textContent = msg;
+        dom.pinPromptError.classList.remove('hidden');
+        const card = dom.modalTeacherPin.querySelector('.modal-card');
+        if (card) {
+            card.classList.remove('pin-shake');
+            void card.offsetWidth;
+            card.classList.add('pin-shake');
+        }
+    }
+
+    function updatePinLockoutState() {
+        const remainingMs = pinLockoutUntilMs - Date.now();
+        if (remainingMs > 0) {
+            const secs = Math.ceil(remainingMs / 1000);
+            dom.btnPinSubmit.disabled = true;
+            showPinError(t('pin_too_many', { s: secs }));
+            return true;
+        }
+        dom.btnPinSubmit.disabled = false;
+        return false;
+    }
+
+    function startPinLockoutCountdown() {
+        if (pinLockoutTimerId) clearInterval(pinLockoutTimerId);
+        updatePinLockoutState();
+        pinLockoutTimerId = setInterval(() => {
+            if (!updatePinLockoutState()) {
+                clearInterval(pinLockoutTimerId);
+                pinLockoutTimerId = null;
+                dom.pinPromptError.classList.add('hidden');
+            }
+        }, 500);
+    }
+
+    function requestTeacherUnlock(reasonType, onSuccess) {
+        pendingPinAction = () => {
+            if (reasonType === 'settings') {
+                teacherPanelUnlocked = true;
+            }
+            onSuccess();
+        };
+        dom.pinPromptReason.textContent = t(reasonType === 'clear' ? 'pin_reason_clear' : 'pin_reason_settings');
+        dom.inputPinPrompt.value = '';
+        dom.inputPinPrompt.type = 'password';
+        dom.pinPromptError.classList.add('hidden');
+        state.pinTouchKb?.attachTo(dom.inputPinPrompt);
+        state.pinTouchKb?.hide();
+
+        if (Date.now() < pinLockoutUntilMs) {
+            startPinLockoutCountdown();
+        } else {
+            dom.btnPinSubmit.disabled = false;
+        }
+
+        openModal('modalTeacherPin');
+        setTimeout(() => dom.inputPinPrompt.focus(), 60);
+    }
+
+    function handlePinKeyTap(digit, action) {
+        if (Date.now() < pinLockoutUntilMs) return;
+        const inp = dom.inputPinPrompt;
+        const maxLen = Number(inp.maxLength) || 24;
+        if (action === 'clear') {
+            inp.value = '';
+        } else if (action === 'back') {
+            inp.value = inp.value.slice(0, -1);
+        } else if (digit !== undefined && inp.value.length < maxLen) {
+            inp.value += String(digit);
+        }
+        dom.pinPromptError.classList.add('hidden');
+    }
+
+    function handlePinFormSubmit(e) {
+        e.preventDefault();
+        if (Date.now() < pinLockoutUntilMs) {
+            startPinLockoutCountdown();
+            return;
+        }
+
+        const entered = dom.inputPinPrompt.value;
+        if (!DB.verifyTeacherPin(entered)) {
+            pinFailedAttempts += 1;
+            dom.inputPinPrompt.value = '';
+            if (pinFailedAttempts >= 5) {
+                pinFailedAttempts = 0;
+                pinLockoutUntilMs = Date.now() + 10000;
+                startPinLockoutCountdown();
+            } else {
+                showPinError(t('lb_wrong_pin'));
+            }
+            return;
+        }
+
+        pinFailedAttempts = 0;
+        pinLockoutUntilMs = 0;
+        const cb = pendingPinAction;
+        pendingPinAction = null;
+        closeModal('modalTeacherPin');
+        if (typeof cb === 'function') cb();
     }
 
     // ==================== TEACHER / FIREBASE MODAL ====================
     function openTeacherModal() {
+        if (!teacherPanelUnlocked) {
+            requestTeacherUnlock('settings', openTeacherModal);
+            return;
+        }
         const active = DB.getActiveConfig();
         dom.txtFirebaseConfig.value = active ? JSON.stringify(active, null, 2) : '';
         dom.inputTeacherPin.value = '';
+        dom.inputTeacherPin.type = 'password';
         dom.cfgFeedback.classList.add('hidden');
+        state.teacherTouchKb?.attachTo(dom.inputTeacherPin);
+        state.teacherTouchKb?.hide();
         updateDbStatusUI();
         openModal('modalTeacher');
     }
 
     async function handleSaveAndTestConfig() {
+        if (!teacherPanelUnlocked) return;
         const raw = dom.txtFirebaseConfig.value.trim();
         const newPin = dom.inputTeacherPin.value.trim();
+        if (newPin && (newPin.length < 4 || newPin.length > 24)) {
+            showCfgFeedback(t('cfg_pin_too_short'), false);
+            return;
+        }
+
+        let pinChanged = false;
         if (newPin) {
-            DB.setTeacherPin(newPin);
+            pinChanged = DB.setTeacherPin(newPin);
+            dom.inputTeacherPin.value = '';
         }
 
         if (!raw) {
-            showCfgFeedback(t('cfg_invalid_json'), false);
+            if (pinChanged) {
+                showCfgFeedback(t('cfg_pin_only_saved'), true);
+            } else {
+                showCfgFeedback(t('cfg_invalid_json'), false);
+            }
             return;
         }
 
@@ -1249,7 +1402,7 @@
         if (res.ok) {
             await DB.syncPending();
             refreshMenuStats();
-            showCfgFeedback(t('cfg_test_ok'), true);
+            showCfgFeedback(pinChanged ? t('cfg_pin_updated') : t('cfg_test_ok'), true);
         } else {
             showCfgFeedback(t('cfg_test_err') + (res.error || ''), false);
         }
@@ -1259,6 +1412,16 @@
         dom.cfgFeedback.textContent = msg;
         dom.cfgFeedback.className = 'cfg-feedback ' + (isOk ? 'ok' : 'err');
         dom.cfgFeedback.classList.remove('hidden');
+    }
+
+    function showToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'toast-banner';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 3500);
     }
 
     // ==================== FULLSCREEN & UTILITIES ====================
@@ -1311,7 +1474,7 @@
             applyTranslations();
         });
         dom.btnFullscreen.addEventListener('click', toggleFullscreen);
-        dom.btnDbStatus.addEventListener('click', openTeacherModal);
+        dom.btnDbStatus.addEventListener('click', () => requestTeacherUnlock('settings', openTeacherModal));
 
         // Main menu buttons
         dom.btnMenuDuel.addEventListener('click', () => openSetupModal('duel'));
@@ -1327,7 +1490,7 @@
             });
         });
         dom.btnMenuLeaderboard.addEventListener('click', openLeaderboardModal);
-        dom.btnMenuTeacher.addEventListener('click', openTeacherModal);
+        dom.btnMenuTeacher.addEventListener('click', () => requestTeacherUnlock('settings', openTeacherModal));
 
         // Setup modal
         dom.diffPills.querySelectorAll('.diff-pill').forEach(btn => {
@@ -1381,15 +1544,38 @@
         dom.btnLbExport.addEventListener('click', handleExportCsv);
         dom.btnLbClear.addEventListener('click', handleClearRecords);
 
+        // Teacher PIN gate controls
+        dom.teacherPinForm.addEventListener('submit', handlePinFormSubmit);
+        dom.btnPinToggleEye.addEventListener('click', () => {
+            dom.inputPinPrompt.type = dom.inputPinPrompt.type === 'password' ? 'text' : 'password';
+        });
+        dom.btnPinFullKb.addEventListener('click', () => {
+            state.pinTouchKb.toggle(dom.inputPinPrompt);
+        });
+        dom.pinKeypad.querySelectorAll('.pin-key').forEach(btn => {
+            btn.addEventListener('click', () => {
+                handlePinKeyTap(btn.dataset.pinDigit, btn.dataset.pinAction);
+            });
+        });
+
         // Teacher / Firebase controls
+        dom.btnToggleTeacherPinKb.addEventListener('click', () => {
+            state.teacherTouchKb.toggle(dom.inputTeacherPin);
+        });
         dom.btnCfgSaveTest.addEventListener('click', handleSaveAndTestConfig);
-        dom.btnCfgReset.addEventListener('click', () => {
+        dom.btnCfgReset.addEventListener('click', async () => {
+            if (!teacherPanelUnlocked) return;
             DB.resetConfig();
-            dom.txtFirebaseConfig.value = '';
+            const fallbackCfg = DB.getActiveConfig();
+            dom.txtFirebaseConfig.value = fallbackCfg ? JSON.stringify(fallbackCfg, null, 2) : '';
+            if (fallbackCfg) {
+                await DB.testConnection();
+            }
             updateDbStatusUI();
-            showCfgFeedback(t('cfg_status_offline'), true);
+            showCfgFeedback(DB.cloudConnected ? t('cfg_test_ok') : t('cfg_status_offline'), true);
         });
         dom.btnCfgCopyLink.addEventListener('click', async () => {
+            if (!teacherPanelUnlocked) return;
             const url = DB.buildShareableSetupUrl();
             if (!url) {
                 showCfgFeedback(t('cfg_invalid_json'), false);
@@ -1403,8 +1589,18 @@
             }
         });
 
-        // Physical keyboard shortcut: digits 1..9 during active turn
+        // Physical keyboard shortcuts: Escape closes unlocked PIN/Settings modals, digits 1..9 during active turn
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (!dom.modalTeacherPin.classList.contains('hidden')) {
+                    closeModal('modalTeacherPin');
+                    return;
+                }
+                if (!dom.modalTeacher.classList.contains('hidden')) {
+                    closeModal('modalTeacher');
+                    return;
+                }
+            }
             if (state.view !== 'game' || !state.engine || state.engine.status !== 'playing') return;
             if (document.querySelector('.modal-backdrop:not(.hidden)')) return;
             if (e.key >= '1' && e.key <= '9') {
@@ -1424,6 +1620,8 @@
     async function init() {
         cacheDom();
         state.touchKb = new TouchKeyboard(dom.touchKeyboardContainer);
+        state.pinTouchKb = new TouchKeyboard(dom.pinTouchKeyboardContainer);
+        state.teacherTouchKb = new TouchKeyboard(dom.teacherTouchKeyboardContainer);
         bindEvents();
         applyTranslations();
         switchView('menu');

@@ -5,13 +5,99 @@
         CONFIG: 'carpanga_firebase_config',
         LOCAL_MATCHES: 'carpanga_local_matches',
         PENDING_SYNC: 'carpanga_pending_sync',
-        TEACHER_PIN: 'carpanga_teacher_pin',
+        TEACHER_PIN_HASH: 'carpanga_teacher_pin_hash_v2',
         RECENT_PLAYERS: 'carpanga_recent_players',
         LAST_CLASSROOM: 'carpanga_last_classroom'
     };
 
     const COLLECTION_NAME = 'carpanga_matches';
-    const DEFAULT_PIN = '1234';
+    const PIN_SALT = 'carpanga-pin-v1:';
+    const DEFAULT_PIN_HASH = 'cecfc6e26627aeed9b714d71f7c5557359e9ea7366818effb6855756ad397fc7';
+
+    function storageGet(key) {
+        try {
+            return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function storageSet(key, val) {
+        try {
+            if (typeof localStorage === 'undefined') return false;
+            localStorage.setItem(key, val);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function storageRemove(key) {
+        try {
+            if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
+        } catch (_) {
+            // ignore
+        }
+    }
+
+    function sha256Hex(input) {
+        const msg = unescape(encodeURIComponent(String(input)));
+        const words = [];
+        const bitLen = msg.length * 8;
+        for (let i = 0; i < msg.length; i++) {
+            words[i >> 2] |= (msg.charCodeAt(i) & 0xff) << (24 - (i % 4) * 8);
+        }
+        words[bitLen >> 5] |= 0x80 << (24 - (bitLen % 32));
+        const paddedLen = (((bitLen + 64) >> 9) << 4) + 16;
+        while (words.length < paddedLen) words.push(0);
+        words[paddedLen - 1] = bitLen;
+
+        const K = [
+            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+        ];
+        const H = [
+            0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+            0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+        ];
+        const rotr = (n, x) => (x >>> n) | (x << (32 - n));
+        const W = new Array(64);
+        for (let i = 0; i < words.length; i += 16) {
+            let [a, b, c, d, e, f, g, h] = H;
+            for (let t = 0; t < 64; t++) {
+                if (t < 16) {
+                    W[t] = words[i + t] | 0;
+                } else {
+                    const s0 = rotr(7, W[t - 15]) ^ rotr(18, W[t - 15]) ^ (W[t - 15] >>> 3);
+                    const s1 = rotr(17, W[t - 2]) ^ rotr(19, W[t - 2]) ^ (W[t - 2] >>> 10);
+                    W[t] = (W[t - 16] + s0 + W[t - 7] + s1) | 0;
+                }
+                const S1 = rotr(6, e) ^ rotr(11, e) ^ rotr(25, e);
+                const ch = (e & f) ^ (~e & g);
+                const temp1 = (h + S1 + ch + K[t] + W[t]) | 0;
+                const S0 = rotr(2, a) ^ rotr(13, a) ^ rotr(22, a);
+                const maj = (a & b) ^ (a & c) ^ (b & c);
+                const temp2 = (S0 + maj) | 0;
+                h = g; g = f; f = e; e = (d + temp1) | 0;
+                d = c; c = b; b = a; a = (temp1 + temp2) | 0;
+            }
+            H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0;
+            H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+            H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0;
+            H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+        }
+        return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
+    }
+
+    function hashTeacherPin(pin) {
+        return sha256Hex(PIN_SALT + String(pin === null || pin === undefined ? '' : pin).trim());
+    }
 
     function generateId() {
         const rand = Math.random().toString(36).slice(2, 8);
@@ -101,6 +187,7 @@
     class DatabaseService {
         constructor() {
             ingestConfigFromUrl();
+            storageRemove('carpanga_teacher_pin');
             this.firebaseApp = null;
             this.firestore = null;
             this.fsModule = null;
@@ -146,20 +233,29 @@
             return `${base}?fb=${encodeURIComponent(b64)}`;
         }
 
-        getTeacherPin() {
-            return localStorage.getItem(STORAGE_KEYS.TEACHER_PIN) || DEFAULT_PIN;
+        getTeacherPinHash() {
+            return storageGet(STORAGE_KEYS.TEACHER_PIN_HASH) || DEFAULT_PIN_HASH;
+        }
+
+        hasCustomTeacherPin() {
+            return Boolean(storageGet(STORAGE_KEYS.TEACHER_PIN_HASH));
         }
 
         setTeacherPin(newPin) {
-            if (typeof newPin === 'string' && newPin.trim().length >= 4) {
-                localStorage.setItem(STORAGE_KEYS.TEACHER_PIN, newPin.trim());
-                return true;
-            }
-            return false;
+            if (typeof newPin !== 'string') return false;
+            const trimmed = newPin.trim();
+            if (trimmed.length < 4 || trimmed.length > 24) return false;
+            return storageSet(STORAGE_KEYS.TEACHER_PIN_HASH, hashTeacherPin(trimmed));
+        }
+
+        resetTeacherPin() {
+            storageRemove(STORAGE_KEYS.TEACHER_PIN_HASH);
         }
 
         verifyTeacherPin(pin) {
-            return String(pin || '').trim() === this.getTeacherPin();
+            const candidate = String(pin === null || pin === undefined ? '' : pin).trim();
+            if (!candidate) return false;
+            return hashTeacherPin(candidate) === this.getTeacherPinHash();
         }
 
         async initCloud(force = false) {
@@ -518,6 +614,8 @@
     root.CarpangaDB = new DatabaseService();
     root.CarpangaDBUtils = {
         parseFirebaseConfigInput,
-        isValidFirebaseConfig
+        isValidFirebaseConfig,
+        sha256Hex,
+        hashTeacherPin
     };
-}(typeof self !== 'undefined' ? self : this));
+}(typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : this));

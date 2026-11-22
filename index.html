@@ -33,9 +33,10 @@
             </div>
 
             <div class="topbar-actions">
-                <button type="button" class="chip-btn db-status-btn" id="btnDbStatus" title="Veritabanı Durumu">
+                <button type="button" class="chip-btn db-status-btn" id="btnDbStatus" title="Veritabanı ve Öğretmen Ayarları (Şifre Korumalı)">
                     <span class="db-dot offline" id="dbDot"></span>
                     <span id="dbStatusLabel">Yerel Mod</span>
+                    <span class="db-lock" aria-hidden="true">🔒</span>
                 </button>
 
                 <button type="button" class="icon-btn hidden" id="btnRotateMode" title="Yazıları Döndür (Masa Modu)">
@@ -134,7 +135,7 @@
                             </button>
 
                             <button type="button" class="menu-btn btn-teacher" id="btnMenuTeacher">
-                                <span class="menu-btn-icon">⚙️</span>
+                                <span class="menu-btn-icon">🔐</span>
                                 <span class="menu-btn-body">
                                     <strong data-i18n="menu_teacher_panel">Öğretmen / Veritabanı</strong>
                                     <small>Tüm tahtalar için Firebase bulut bağlantısı</small>
@@ -362,13 +363,17 @@
 
                 <div class="form-row-2">
                     <div class="form-group">
-                        <label for="inputTeacherPin" data-i18n="cfg_pin_label">Öğretmen PIN Kodu (Silme koruması)</label>
-                        <input type="password" id="inputTeacherPin" maxlength="12" placeholder="Varsayılan: 1234">
+                        <label for="inputTeacherPin" data-i18n="cfg_pin_label">Yeni Öğretmen Şifresi / PIN (Değiştirmek istemiyorsanız boş bırakın)</label>
+                        <div class="pin-input-wrap">
+                            <input type="password" id="inputTeacherPin" maxlength="24" autocomplete="new-password" placeholder="En az 4 haneli yeni şifre...">
+                            <button type="button" class="btn-small" id="btnToggleTeacherPinKb" title="Dokunmatik Klavye">⌨️</button>
+                        </div>
                     </div>
                     <div class="form-group cfg-feedback-box">
                         <div class="cfg-feedback hidden" id="cfgFeedback"></div>
                     </div>
                 </div>
+                <div class="touch-keyboard hidden" id="teacherTouchKeyboardContainer"></div>
 
                 <div class="teacher-actions">
                     <button type="button" class="btn-primary" id="btnCfgSaveTest" data-i18n="cfg_save_test">Kaydet ve Bağlantıyı Test Et</button>
@@ -376,6 +381,53 @@
                     <button type="button" class="btn-secondary btn-danger-outline" id="btnCfgReset" data-i18n="cfg_reset_config">Varsayılana Sıfırla</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: TEACHER PIN GATE -->
+    <div class="modal-backdrop hidden" id="modalTeacherPin">
+        <div class="modal-card modal-pin-card" role="dialog" aria-modal="true" aria-labelledby="pinModalTitle">
+            <div class="modal-header">
+                <h2 id="pinModalTitle">🔒 <span data-i18n="pin_modal_title">Öğretmen Girişi</span></h2>
+                <button type="button" class="modal-close" data-close="modalTeacherPin">✕</button>
+            </div>
+            <form id="teacherPinForm" class="modal-body pin-body" autocomplete="off">
+                <p class="pin-reason" id="pinPromptReason" data-i18n="pin_reason_settings">
+                    Firebase veritabanı ve öğretmen ayarlarına erişmek için şifreyi girin.
+                </p>
+
+                <div class="pin-input-wrap">
+                    <input type="password" id="inputPinPrompt" maxlength="24" autocomplete="new-password" inputmode="numeric" placeholder="Şifreyi girin">
+                    <button type="button" class="btn-small pin-eye-btn" id="btnPinToggleEye" title="Göster/Gizle">👁️</button>
+                </div>
+
+                <div class="form-error hidden" id="pinPromptError"></div>
+
+                <div class="pin-keypad" id="pinKeypad">
+                    <button type="button" class="pin-key" data-pin-digit="1">1</button>
+                    <button type="button" class="pin-key" data-pin-digit="2">2</button>
+                    <button type="button" class="pin-key" data-pin-digit="3">3</button>
+                    <button type="button" class="pin-key" data-pin-digit="4">4</button>
+                    <button type="button" class="pin-key" data-pin-digit="5">5</button>
+                    <button type="button" class="pin-key" data-pin-digit="6">6</button>
+                    <button type="button" class="pin-key" data-pin-digit="7">7</button>
+                    <button type="button" class="pin-key" data-pin-digit="8">8</button>
+                    <button type="button" class="pin-key" data-pin-digit="9">9</button>
+                    <button type="button" class="pin-key pin-key-fn" data-pin-action="clear" data-i18n="pin_clear_key">Temizle</button>
+                    <button type="button" class="pin-key" data-pin-digit="0">0</button>
+                    <button type="button" class="pin-key pin-key-fn" data-pin-action="back" aria-label="Sil">⌫</button>
+                </div>
+
+                <div class="pin-kb-toggle-row">
+                    <button type="button" class="btn-small" id="btnPinFullKb" data-i18n="pin_toggle_kb">⌨️ Harf Klavyesi</button>
+                </div>
+                <div class="touch-keyboard hidden" id="pinTouchKeyboardContainer"></div>
+
+                <div class="pin-actions">
+                    <button type="button" class="btn-secondary" data-close="modalTeacherPin" data-i18n="pin_cancel">İptal</button>
+                    <button type="submit" class="btn-primary" id="btnPinSubmit">🔓 <span data-i18n="pin_submit">Giriş Yap</span></button>
+                </div>
+            </form>
         </div>
     </div>
 
