@@ -834,11 +834,48 @@ button > * {
     margin: 0 0 18px;
 }
 
+.tutorial-overlay-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
 .tutorial-continue-hint {
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--p1-dark);
     animation: pulseSoft 1.1s infinite;
+}
+
+.tutorial-exit-bar {
+    width: min(67dvh, 52vw, 660px);
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.tutorial-step-badge {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: #ffffff;
+    border: 1px solid var(--border-soft);
+    padding: 8px 14px;
+    border-radius: 999px;
+}
+
+.tutorial-home-btn {
+    padding: 9px 16px;
+    border-radius: 12px;
+    font-size: 0.94rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 /* Helper Bar & Hints Bar */
@@ -1667,6 +1704,7 @@ button > * {
 
     .board-wrapper,
     .helper-bar,
+    .tutorial-exit-bar,
     .hints-bar {
         width: min(94vw, 520px);
     }

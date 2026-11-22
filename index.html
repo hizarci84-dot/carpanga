@@ -171,7 +171,12 @@
                         <!-- Tutorial Fullscreen Overlay inside Board Stage -->
                         <div class="tutorial-full-overlay hidden" id="tutorialFullOverlay">
                             <p id="tutorialFullText"></p>
-                            <span class="tutorial-continue-hint" id="tutorialContinueHint">Devam Et &gt;&gt;</span>
+                            <div class="tutorial-overlay-actions">
+                                <span class="tutorial-continue-hint" id="tutorialContinueHint">Devam Et &gt;&gt;</span>
+                                <button type="button" class="btn-secondary tutorial-home-btn" id="btnOverlayReturnHome">
+                                    🏠 <span data-i18n="tutorial_return_home">Anasayfaya Dön</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -179,6 +184,14 @@
                     <div class="helper-bar" id="helperBar">
                         <span id="helperBarText">Başlangıç hamlesi: 1–9 arası bir rakam seçin.</span>
                         <button type="button" class="tutorial-next-btn hidden" id="btnTutorialNext">Devam Et &gt;&gt;</button>
+                    </div>
+
+                    <!-- Tutorial Navigation / Return Home Bar -->
+                    <div class="tutorial-exit-bar hidden" id="tutorialExitBar">
+                        <span class="tutorial-step-badge" id="tutorialStepBadge">Adım 1 / 18</span>
+                        <button type="button" class="btn-secondary tutorial-home-btn" id="btnTutorialReturnHome">
+                            🏠 <span data-i18n="tutorial_return_home">Anasayfaya Dön</span>
+                        </button>
                     </div>
 
                     <!-- Hints Bar -->

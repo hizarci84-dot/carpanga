@@ -64,8 +64,8 @@
             'menuMiniLeaders', 'menuPendingBadge',
             'arenaLayout', 'panelP1', 'panelP2', 'p1DisplayName', 'p1SubInfo',
             'p2DisplayName', 'p2SubInfo', 'padP1', 'padP2', 'boardWrapper', 'boardGrid',
-            'tutorialFullOverlay', 'tutorialFullText', 'tutorialContinueHint',
-            'helperBar', 'helperBarText', 'btnTutorialNext', 'hintsBar',
+            'tutorialFullOverlay', 'tutorialFullText', 'tutorialContinueHint', 'btnOverlayReturnHome',
+            'helperBar', 'helperBarText', 'btnTutorialNext', 'tutorialExitBar', 'tutorialStepBadge', 'btnTutorialReturnHome', 'hintsBar',
             'btnHintAvailable', 'btnHintFatal', 'btnHintAuto',
             'lblHintAvailable', 'lblHintFatal', 'lblHintAuto',
             'modalSetup', 'setupModalTitle', 'setupForm', 'selectClassGrade', 'selectClassSection',
@@ -109,7 +109,19 @@
         populateClassroomSelectors();
         updateDbStatusUI();
         if (state.view === 'game' && state.engine) {
-            renderGameUI();
+            if (state.mode === 'tutorial') {
+                const step = TutorialSteps[state.tutorialStepIdx];
+                if (step) {
+                    const msg = t(step.key);
+                    dom.helperBarText.textContent = msg;
+                    dom.tutorialFullText.textContent = msg;
+                }
+                dom.tutorialStepBadge.textContent = t('tutorial_step_badge', { cur: state.tutorialStepIdx + 1, total: TutorialSteps.length });
+                dom.tutorialContinueHint.textContent = t('tutorial_sub_helper_text');
+                dom.btnTutorialNext.textContent = t('tutorial_sub_helper_text');
+            } else {
+                renderGameUI();
+            }
         }
     }
 
@@ -415,6 +427,7 @@
             dom.timerBadge.classList.add('hidden');
             dom.helperBar.classList.add('tutorial-active');
             dom.btnTutorialNext.classList.remove('hidden');
+            dom.tutorialExitBar.classList.remove('hidden');
             switchView('game');
             buildBoardAndPads();
             initTutorialFlow();
@@ -424,6 +437,7 @@
         dom.hintsBar.classList.remove('hidden');
         dom.helperBar.classList.remove('tutorial-active');
         dom.btnTutorialNext.classList.add('hidden');
+        dom.tutorialExitBar.classList.add('hidden');
         dom.timerBadge.classList.toggle('hidden', mode !== 'timed');
 
         switchView('game');
@@ -833,7 +847,7 @@
         const btnMenu = document.createElement('button');
         btnMenu.type = 'button';
         btnMenu.className = isTutorial ? 'btn-primary' : 'btn-secondary';
-        btnMenu.textContent = `🏠 ${t('popup_return_menu_button')}`;
+        btnMenu.textContent = `🏠 ${t(isTutorial ? 'tutorial_return_home' : 'popup_return_menu_button')}`;
         btnMenu.addEventListener('click', () => {
             closeModal('modalGamePopup');
             switchView('menu');
@@ -942,6 +956,7 @@
         const step = TutorialSteps[state.tutorialStepIdx];
         const msg = t(step.key);
         dom.helperBarText.textContent = msg;
+        dom.tutorialStepBadge.textContent = t('tutorial_step_badge', { cur: state.tutorialStepIdx + 1, total: TutorialSteps.length });
         dom.tutorialContinueHint.textContent = t('tutorial_sub_helper_text');
         dom.btnTutorialNext.textContent = t('tutorial_sub_helper_text');
 
@@ -1583,8 +1598,15 @@
         dom.btnHintFatal.addEventListener('click', () => handleHintClick('fatal'));
         dom.btnHintAuto.addEventListener('click', () => handleHintClick('auto'));
 
-        // Tutorial advancement
+        // Tutorial advancement & return home
         dom.tutorialFullOverlay.addEventListener('click', advanceTutorialStep);
+        dom.btnOverlayReturnHome.addEventListener('click', (e) => {
+            e.stopPropagation();
+            switchView('menu');
+        });
+        dom.btnTutorialReturnHome.addEventListener('click', () => {
+            switchView('menu');
+        });
         dom.helperBar.addEventListener('click', () => {
             if (state.mode === 'tutorial') advanceTutorialStep();
         });

@@ -147,6 +147,8 @@
             pin_toggle_kb: '⌨️ Harf Klavyesi',
 
             // Tutorial (exact original messages)
+            tutorial_return_home: 'Anasayfaya Dön',
+            tutorial_step_badge: 'Adım {cur} / {total}',
             tutorial_sub_helper_text: 'Devam Et >>',
             tutorial_welcome_message: 'Çarpma işlemini temel alan ÇARPANGA bir zeka ve strateji oyunudur.',
             tutorial_opponent_buttons: 'Bunlar rakibinin hamle yapacağı rakamlar.',
@@ -304,6 +306,8 @@
             pin_too_many: 'Too many failed attempts! Wait {s}s.',
             pin_toggle_kb: '⌨️ Letter Keyboard',
 
+            tutorial_return_home: 'Return to Home',
+            tutorial_step_badge: 'Step {cur} / {total}',
             tutorial_sub_helper_text: 'Continue >>',
             tutorial_welcome_message: 'Charpanga is a brain teaser and strategy game based on multiplication.',
             tutorial_opponent_buttons: 'Your opponent will make moves using these numbers.',
