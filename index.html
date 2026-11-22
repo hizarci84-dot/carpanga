@@ -224,8 +224,15 @@
             <form id="setupForm" class="modal-body" autocomplete="off">
                 <div class="form-row-2">
                     <div class="form-group">
-                        <label for="inputClassroom" data-i18n="setup_classroom_label">Sınıf / Şube veya Tahta Adı</label>
-                        <input type="text" id="inputClassroom" maxlength="24" placeholder="Örn: 6-A veya Tahta-1">
+                        <label for="selectClassGrade" data-i18n="setup_classroom_label">Sınıf / Şube</label>
+                        <div class="classroom-select-row">
+                            <select id="selectClassGrade" aria-label="Sınıf">
+                                <option value="">Sınıf Seçiniz</option>
+                            </select>
+                            <select id="selectClassSection" aria-label="Şube">
+                                <option value="">Şube Seçiniz</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group" id="groupDifficulty">
                         <label for="selectDifficulty" data-i18n="setup_difficulty_label">Yapay Zeka Zorluk Seviyesi</label>

@@ -581,7 +581,7 @@
                 return b.played - a.played;
             });
 
-            const classrooms = Array.from(new Set(matches.map(m => m.classroom || 'Genel'))).sort((a, b) => a.localeCompare(b, 'tr'));
+            const classrooms = Array.from(new Set(matches.map(m => m.classroom || 'Genel'))).sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
 
             return {
                 filteredMatches,

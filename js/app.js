@@ -68,7 +68,7 @@
             'helperBar', 'helperBarText', 'btnTutorialNext', 'hintsBar',
             'btnHintAvailable', 'btnHintFatal', 'btnHintAuto',
             'lblHintAvailable', 'lblHintFatal', 'lblHintAuto',
-            'modalSetup', 'setupModalTitle', 'setupForm', 'inputClassroom',
+            'modalSetup', 'setupModalTitle', 'setupForm', 'selectClassGrade', 'selectClassSection',
             'groupDifficulty', 'diffPills', 'inputPlayer1', 'labelPlayer1',
             'groupPlayer2', 'inputPlayer2', 'recentPlayersBox', 'recentChips',
             'setupError', 'btnToggleTouchKeyboard', 'touchKeyboardContainer',
@@ -101,12 +101,12 @@
         dom.btnRotateMode.title = t('hud_btn_rotate');
         dom.btnRestartGame.title = t('hud_btn_restart');
         dom.btnBackToMenu.title = t('hud_btn_menu');
-        dom.inputClassroom.placeholder = t('setup_classroom_placeholder');
         dom.inputPlayer1.placeholder = t('setup_player1_placeholder');
         dom.inputPlayer2.placeholder = t('setup_player2_placeholder');
         dom.lbSearchInput.placeholder = t('lb_search_placeholder');
         dom.inputTeacherPin.placeholder = t('cfg_pin_placeholder');
         dom.inputPinPrompt.placeholder = t('pin_input_placeholder');
+        populateClassroomSelectors();
         updateDbStatusUI();
         if (state.view === 'game' && state.engine) {
             renderGameUI();
@@ -215,10 +215,67 @@
     }
 
     // ==================== SETUP MODAL ====================
+    const SECTION_LETTERS = [
+        'A', 'B', 'C', 'Ç', 'D', 'E', 'F', 'G', 'Ğ', 'H', 'I', 'İ',
+        'J', 'K', 'L', 'M', 'N', 'O', 'Ö', 'P', 'R', 'S', 'Ş', 'T', 'U', 'Ü', 'V', 'Y', 'Z'
+    ];
+
+    function populateClassroomSelectors() {
+        const prevGrade = dom.selectClassGrade.value;
+        const prevSection = dom.selectClassSection.value;
+
+        dom.selectClassGrade.innerHTML = `<option value="">${escapeHtml(t('setup_grade_placeholder'))}</option>`;
+        for (let g = 1; g <= 12; g++) {
+            const opt = document.createElement('option');
+            opt.value = String(g);
+            opt.textContent = t('setup_grade_option', { n: g });
+            dom.selectClassGrade.appendChild(opt);
+        }
+
+        dom.selectClassSection.innerHTML = `<option value="">${escapeHtml(t('setup_section_placeholder'))}</option>`;
+        for (const letter of SECTION_LETTERS) {
+            const opt = document.createElement('option');
+            opt.value = letter;
+            opt.textContent = t('setup_section_option', { letter });
+            dom.selectClassSection.appendChild(opt);
+        }
+
+        dom.selectClassGrade.value = prevGrade;
+        dom.selectClassSection.value = prevSection;
+    }
+
+    function parseClassroomLabel(raw) {
+        const text = String(raw || '').trim();
+        if (!text) return { grade: '', section: '' };
+        const exactWithSection = text.match(/^(\d{1,2})\s*[-/\s.]?\s*([A-ZÇĞİÖŞÜ])$/i);
+        if (exactWithSection) {
+            const num = Number(exactWithSection[1]);
+            const sec = exactWithSection[2].toLocaleUpperCase('tr-TR');
+            return {
+                grade: num >= 1 && num <= 12 ? String(num) : '',
+                section: SECTION_LETTERS.includes(sec) ? sec : ''
+            };
+        }
+        const gradeOnly = text.match(/^(\d{1,2})(?:\s*\.\s*S[ıi]n[ıi]f)?$/i) || text.match(/^Grade\s+(\d{1,2})$/i);
+        if (gradeOnly) {
+            const num = Number(gradeOnly[1]);
+            if (num >= 1 && num <= 12) return { grade: String(num), section: '' };
+        }
+        return { grade: '', section: '' };
+    }
+
+    function formatClassroomLabel(grade, section) {
+        if (grade && section) return `${grade}-${section}`;
+        if (grade) return `${grade}. Sınıf`;
+        return 'Genel';
+    }
+
     function openSetupModal(mode) {
         state.pendingSetupMode = mode;
         dom.setupError.classList.add('hidden');
-        dom.inputClassroom.value = DB.getLastClassroom() || '';
+        const parsedClass = parseClassroomLabel(DB.getLastClassroom());
+        dom.selectClassGrade.value = parsedClass.grade;
+        dom.selectClassSection.value = parsedClass.section;
         dom.inputPlayer1.value = '';
         dom.inputPlayer2.value = '';
 
@@ -278,9 +335,18 @@
     function handleSetupSubmit(e) {
         e.preventDefault();
         const mode = state.pendingSetupMode;
-        const classroom = dom.inputClassroom.value.trim() || 'Genel';
+        const grade = dom.selectClassGrade.value;
+        const section = dom.selectClassSection.value;
         const p1 = dom.inputPlayer1.value.trim();
         const p2 = mode === 'duel' ? dom.inputPlayer2.value.trim() : t('hud_player_bot');
+
+        if (section && !grade) {
+            dom.setupError.textContent = t('setup_grade_required');
+            dom.setupError.classList.remove('hidden');
+            return;
+        }
+
+        const classroom = formatClassroomLabel(grade, section);
 
         if (!p1 || (mode === 'duel' && !p2)) {
             dom.setupError.textContent = t('setup_name_required');
@@ -1500,7 +1566,7 @@
                 btn.classList.add('active');
             });
         });
-        [dom.inputClassroom, dom.inputPlayer1, dom.inputPlayer2].forEach(inp => {
+        [dom.inputPlayer1, dom.inputPlayer2].forEach(inp => {
             inp.addEventListener('focus', () => {
                 state.lastFocusedInput = inp;
                 state.touchKb?.attachTo(inp);
