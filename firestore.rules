@@ -1,0 +1,146 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following data structure for the
+// Carpanga school math game (unauthenticated public classroom smart-board use):
+//
+// Collection: carpanga_matches
+// Document ID: {matchId} (e.g., "m_<timestampMs>_<random>", length 3..80)
+// Fields (18 required fields, exact schema enforced; documents are immutable):
+//   - id: string (required, size 3..80, must equal document ID matchId)
+//   - createdAtMs: int (required, > 0) - client epoch timestamp in milliseconds
+//   - createdAtIso: string (required, size 10..40) - ISO-8601 date/time string
+//   - classroom: string (required, size 1..30) - class/board label (e.g. "6-A", "Genel")
+//   - mode: string (required, in ['duel', 'single', 'timed']) - game mode
+//   - difficulty: int | null (required, null or int 1..4) - AI bot difficulty level
+//   - player1Name: string (required, size 1..50) - player 1 display name
+//   - player1IsBot: bool (required) - whether player 1 is a bot
+//   - player2Name: string (required, size 1..50) - player 2 / bot display name
+//   - player2IsBot: bool (required) - whether player 2 is a bot
+//   - winnerSide: int (required, in [0, 1, 2]) - 0=draw, 1=player1, 2=player2
+//   - winnerName: string (required, size 1..50) - winner display name or "Berabere"
+//   - loserName: string (required, size 1..50) - loser display name or "Berabere"
+//   - totalTurns: int (required, int 0..60) - total turns played in match
+//   - durationSeconds: int (required, int 0..86400) - match duration in seconds
+//   - winningCells: list (required, size <= 3, elements int 0..81) - winning board cell values
+//   - synced: bool (required) - sync status flag
+//   - serverCreatedAt: timestamp (required, must equal request.time) - server timestamp
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Validate that the document contains only the allowed fields
+    function hasOnlyAllowedFields(data, fields) {
+      return data.keys().hasOnly(fields);
+    }
+
+    // Validate that all required fields exist on the document
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    // Validate strict string type and inclusive character length bounds
+    function isValidString(val, minLen, maxLen) {
+      return val is string &&
+        val.size() >= minLen &&
+        val.size() <= maxLen;
+    }
+
+    // Validate strict integer type and inclusive numeric bounds
+    function isValidIntRange(val, minVal, maxVal) {
+      return val is int &&
+        val >= minVal &&
+        val <= maxVal;
+    }
+
+    // Validate each element in winningCells (board product values 1..81; 0 permitted for test fixtures)
+    function isValidWinningCell(cell) {
+      return isValidIntRange(cell, 0, 81);
+    }
+
+    // Validate winningCells is a bounded list (0..3 items) with valid integer cell values
+    function isValidWinningCells(cells) {
+      return cells is list &&
+        cells.size() <= 3 &&
+        (cells.size() < 1 || isValidWinningCell(cells[0])) &&
+        (cells.size() < 2 || isValidWinningCell(cells[1])) &&
+        (cells.size() < 3 || isValidWinningCell(cells[2]));
+    }
+
+    // ===============================================================
+    // Domain Validator
+    // ===============================================================
+
+    function isValidMatch(data, matchId) {
+      let matchFields = [
+        'id',
+        'createdAtMs',
+        'createdAtIso',
+        'classroom',
+        'mode',
+        'difficulty',
+        'player1Name',
+        'player1IsBot',
+        'player2Name',
+        'player2IsBot',
+        'winnerSide',
+        'winnerName',
+        'loserName',
+        'totalTurns',
+        'durationSeconds',
+        'winningCells',
+        'synced',
+        'serverCreatedAt'
+      ];
+
+      return hasOnlyAllowedFields(data, matchFields) &&
+        hasRequiredFields(data, matchFields) &&
+        isValidString(data.id, 3, 80) &&
+        data.id == matchId &&
+        data.createdAtMs is int && data.createdAtMs > 0 &&
+        isValidString(data.createdAtIso, 10, 40) &&
+        isValidString(data.classroom, 1, 30) &&
+        data.mode is string && data.mode in ['duel', 'single', 'timed'] &&
+        (data.difficulty == null || isValidIntRange(data.difficulty, 1, 4)) &&
+        isValidString(data.player1Name, 1, 50) &&
+        data.player1IsBot is bool &&
+        isValidString(data.player2Name, 1, 50) &&
+        data.player2IsBot is bool &&
+        data.winnerSide is int && data.winnerSide in [0, 1, 2] &&
+        isValidString(data.winnerName, 1, 50) &&
+        isValidString(data.loserName, 1, 50) &&
+        isValidIntRange(data.totalTurns, 0, 60) &&
+        isValidIntRange(data.durationSeconds, 0, 86400) &&
+        isValidWinningCells(data.winningCells) &&
+        data.synced is bool &&
+        data.serverCreatedAt is timestamp &&
+        data.serverCreatedAt == request.time;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Public classroom leaderboard & match history; append-only immutable match records
+    match /carpanga_matches/{matchId} {
+      allow get, list: if true;
+      allow create: if isValidMatch(request.resource.data, matchId);
+      // Match records are immutable once written so students cannot alter or wipe history
+      allow update, delete: if false;
+    }
+
+    // Default deny all other collections, documents, and subcollections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

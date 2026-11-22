@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Çarpanga — Çarpma Temelli Zeka ve Strateji Oyunu</title>
+    <link rel="icon" type="image/png" href="assets/images/carpanga-icon.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app" class="app-shell">
+        <!-- Global Top Navigation / Utility Bar -->
+        <header class="topbar">
+            <div class="topbar-brand" id="brandHomeBtn" role="button" tabindex="0" title="Ana Menü">
+                <img src="assets/images/carpanga-logo.png" alt="Çarpanga Logo" class="brand-logo">
+                <div class="brand-text">
+                    <span class="brand-title" data-i18n="game_name">Çarpanga</span>
+                    <span class="brand-sub hidden-sm" data-i18n="game_subtitle">Çarpma Temelli Zeka ve Strateji Oyunu</span>
+                </div>
+            </div>
+
+            <div class="topbar-status" id="gameStatusBanner" hidden>
+                <div class="status-pill" id="turnBadge">
+                    <span class="dot"></span>
+                    <span id="turnBadgeText">Sıra: 1. Oyuncu</span>
+                </div>
+                <div class="status-pill neutral" id="lastPickBadge">
+                    <span data-i18n="hud_last_number">Son Seçilen</span>: <strong id="lastPickValue">—</strong>
+                </div>
+                <div class="status-pill timer hidden" id="timerBadge">
+                    ⏱ <strong id="timerValue">30 sn</strong>
+                </div>
+            </div>
+
+            <div class="topbar-actions">
+                <button type="button" class="chip-btn db-status-btn" id="btnDbStatus" title="Veritabanı Durumu">
+                    <span class="db-dot offline" id="dbDot"></span>
+                    <span id="dbStatusLabel">Yerel Mod</span>
+                </button>
+
+                <button type="button" class="icon-btn hidden" id="btnRotateMode" title="Yazıları Döndür (Masa Modu)">
+                    <span class="icon-glyph">🔄</span>
+                </button>
+                <button type="button" class="icon-btn hidden" id="btnRestartGame" title="Yeniden Başlat">
+                    <span class="icon-glyph">↻</span>
+                </button>
+                <button type="button" class="icon-btn hidden" id="btnBackToMenu" title="Menü">
+                    <span class="icon-glyph">🏠</span>
+                </button>
+                <button type="button" class="icon-btn" id="btnSoundToggle" title="Ses Aç/Kapa">
+                    <span class="icon-glyph" id="soundGlyph">🔊</span>
+                </button>
+                <button type="button" class="icon-btn" id="btnLangToggle" title="TR / EN">
+                    <span class="lang-tag" id="langTag">TR</span>
+                </button>
+                <button type="button" class="icon-btn" id="btnFullscreen" title="Tam Ekran">
+                    <span class="icon-glyph" id="fullscreenGlyph">⛶</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- VIEW 1: MAIN MENU -->
+        <main id="viewMenu" class="view view-menu active">
+            <div class="menu-hero-card">
+                <div class="menu-logo-area">
+                    <img src="assets/images/carpanga-logo.png" alt="Çarpanga" class="hero-logo">
+                    <h1 class="hero-title" data-i18n="game_name">Çarpanga</h1>
+                    <p class="hero-subtitle" data-i18n="game_subtitle">Çarpma Temelli Zeka ve Strateji Oyunu</p>
+                </div>
+
+                <div class="menu-grid">
+                    <div class="menu-primary-actions">
+                        <button type="button" class="menu-btn btn-duel" id="btnMenuDuel">
+                            <span class="menu-btn-icon">⚔️</span>
+                            <span class="menu-btn-body">
+                                <strong data-i18n="menu_play_multiplayer">Düello (2 Öğrenci)</strong>
+                                <small>Aynı tahtada iki öğrenci karşılıklı oynar</small>
+                            </span>
+                        </button>
+
+                        <button type="button" class="menu-btn btn-single" id="btnMenuSingle">
+                            <span class="menu-btn-icon">🤖</span>
+                            <span class="menu-btn-body">
+                                <strong data-i18n="menu_play_singleplayer">Bilgisayara Karşı</strong>
+                                <small>Basit, Orta, Zor veya Uzman yapay zeka</small>
+                            </span>
+                        </button>
+
+                        <button type="button" class="menu-btn btn-timed" id="btnMenuTimed">
+                            <span class="menu-btn-icon">⏱️</span>
+                            <span class="menu-btn-body">
+                                <strong data-i18n="menu_play_online_play">Meydan Okuma (Süreli)</strong>
+                                <small>Her hamle için 30 saniye süreli mücadele</small>
+                            </span>
+                        </button>
+
+                        <button type="button" class="menu-btn btn-tutorial" id="btnMenuTutorial">
+                            <span class="menu-btn-icon">🎓</span>
+                            <span class="menu-btn-body">
+                                <strong data-i18n="menu_how_to_play">Nasıl Oynanır?</strong>
+                                <small>Adım adım etkileşimli oyun anlatımı</small>
+                            </span>
+                        </button>
+                    </div>
+
+                    <div class="menu-side-panel">
+                        <div class="quick-stats-card">
+                            <div class="quick-stats-header">
+                                <span>📊 Okul Kayıt Özeti</span>
+                                <span class="sync-badge" id="menuPendingBadge" hidden>0 bekliyor</span>
+                            </div>
+                            <div class="quick-stats-numbers">
+                                <div class="qstat">
+                                    <strong id="menuStatMatches">0</strong>
+                                    <span data-i18n="lb_stat_total_matches">Toplam Maç</span>
+                                </div>
+                                <div class="qstat">
+                                    <strong id="menuStatStudents">0</strong>
+                                    <span data-i18n="lb_stat_total_students">Farklı Öğrenci</span>
+                                </div>
+                            </div>
+                            <div class="mini-leaders" id="menuMiniLeaders">
+                                <p class="mini-empty">Henüz kayıtlı öğrenci yok.</p>
+                            </div>
+                        </div>
+
+                        <div class="menu-utility-actions">
+                            <button type="button" class="menu-btn btn-leaderboard" id="btnMenuLeaderboard">
+                                <span class="menu-btn-icon">🏆</span>
+                                <span class="menu-btn-body">
+                                    <strong data-i18n="menu_leaderboard">Skor Tablosu & Kayıtlar</strong>
+                                    <small>Kazanan/kaybeden listesi ve Excel (CSV) indir</small>
+                                </span>
+                            </button>
+
+                            <button type="button" class="menu-btn btn-teacher" id="btnMenuTeacher">
+                                <span class="menu-btn-icon">⚙️</span>
+                                <span class="menu-btn-body">
+                                    <strong data-i18n="menu_teacher_panel">Öğretmen / Veritabanı</strong>
+                                    <small>Tüm tahtalar için Firebase bulut bağlantısı</small>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- VIEW 2: GAME ARENA -->
+        <main id="viewGame" class="view view-game">
+            <div class="arena-layout" id="arenaLayout">
+                <!-- Player 1 (Blue) Panel -->
+                <section class="player-panel p1-panel" id="panelP1">
+                    <div class="player-card p1-card">
+                        <div class="player-avatar p1-avatar">1</div>
+                        <div class="player-meta">
+                            <div class="player-name" id="p1DisplayName">1. Oyuncu</div>
+                            <div class="player-sub" id="p1SubInfo">Mavi Oyuncu</div>
+                        </div>
+                        <div class="turn-indicator" id="p1TurnBadge">SIRA</div>
+                    </div>
+                    <div class="digit-pad" id="padP1" aria-label="1. Oyuncu Rakamları"></div>
+                </section>
+
+                <!-- Center 6x6 Multiplication Board -->
+                <section class="board-stage">
+                    <div class="board-wrapper" id="boardWrapper">
+                        <div class="board-grid" id="boardGrid"></div>
+
+                        <!-- Tutorial Fullscreen Overlay inside Board Stage -->
+                        <div class="tutorial-full-overlay hidden" id="tutorialFullOverlay">
+                            <p id="tutorialFullText"></p>
+                            <span class="tutorial-continue-hint" id="tutorialContinueHint">Devam Et &gt;&gt;</span>
+                        </div>
+                    </div>
+
+                    <!-- Helper / Instruction Ribbon -->
+                    <div class="helper-bar" id="helperBar">
+                        <span id="helperBarText">Başlangıç hamlesi: 1–9 arası bir rakam seçin.</span>
+                        <button type="button" class="tutorial-next-btn hidden" id="btnTutorialNext">Devam Et &gt;&gt;</button>
+                    </div>
+
+                    <!-- Hints Bar -->
+                    <div class="hints-bar" id="hintsBar">
+                        <button type="button" class="hint-btn hint-available" id="btnHintAvailable">
+                            <span class="hint-dot"></span>
+                            <span id="lblHintAvailable">Olası Hamleler x 3</span>
+                        </button>
+                        <button type="button" class="hint-btn hint-fatal" id="btnHintFatal">
+                            <span class="hint-dot"></span>
+                            <span id="lblHintFatal">Tehlikeli Hamleler x 3</span>
+                        </button>
+                        <button type="button" class="hint-btn hint-auto" id="btnHintAuto">
+                            <span class="hint-dot"></span>
+                            <span id="lblHintAuto">Hamle Öner x 1</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Player 2 (Red / Bot) Panel -->
+                <section class="player-panel p2-panel" id="panelP2">
+                    <div class="player-card p2-card">
+                        <div class="player-avatar p2-avatar">2</div>
+                        <div class="player-meta">
+                            <div class="player-name" id="p2DisplayName">2. Oyuncu</div>
+                            <div class="player-sub" id="p2SubInfo">Kırmızı Oyuncu</div>
+                        </div>
+                        <div class="turn-indicator" id="p2TurnBadge">SIRA</div>
+                    </div>
+                    <div class="digit-pad" id="padP2" aria-label="2. Oyuncu Rakamları"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL 1: PLAYER / MATCH SETUP -->
+    <div class="modal-backdrop hidden" id="modalSetup">
+        <div class="modal-card modal-setup-card" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h2 id="setupModalTitle">Düello Başlat</h2>
+                <button type="button" class="modal-close" data-close="modalSetup">✕</button>
+            </div>
+            <form id="setupForm" class="modal-body" autocomplete="off">
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="inputClassroom" data-i18n="setup_classroom_label">Sınıf / Şube veya Tahta Adı</label>
+                        <input type="text" id="inputClassroom" maxlength="24" placeholder="Örn: 6-A veya Tahta-1">
+                    </div>
+                    <div class="form-group" id="groupDifficulty">
+                        <label for="selectDifficulty" data-i18n="setup_difficulty_label">Yapay Zeka Zorluk Seviyesi</label>
+                        <div class="diff-pills" id="diffPills">
+                            <button type="button" class="diff-pill" data-level="1" data-i18n="maingame_level_easy">Basit</button>
+                            <button type="button" class="diff-pill active" data-level="2" data-i18n="maingame_level_medium">Orta</button>
+                            <button type="button" class="diff-pill" data-level="3" data-i18n="maingame_level_hard">Zor</button>
+                            <button type="button" class="diff-pill" data-level="4" data-i18n="maingame_level_master">Uzman</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="inputPlayer1" id="labelPlayer1" data-i18n="setup_player1_label">1. Oyuncu Adı Soyadı (Mavi)</label>
+                        <input type="text" id="inputPlayer1" maxlength="36" placeholder="Örn: Ahmet Yılmaz" required>
+                    </div>
+                    <div class="form-group" id="groupPlayer2">
+                        <label for="inputPlayer2" data-i18n="setup_player2_label">2. Oyuncu Adı Soyadı (Kırmızı)</label>
+                        <input type="text" id="inputPlayer2" maxlength="36" placeholder="Örn: Ayşe Demir">
+                    </div>
+                </div>
+
+                <div class="recent-players-box" id="recentPlayersBox" hidden>
+                    <span class="recent-label" data-i18n="setup_quick_recent">Son Oynayanlar:</span>
+                    <div class="recent-chips" id="recentChips"></div>
+                </div>
+
+                <div class="form-error hidden" id="setupError"></div>
+
+                <div class="setup-footer-actions">
+                    <button type="button" class="btn-secondary" id="btnToggleTouchKeyboard">
+                        ⌨️ <span data-i18n="setup_toggle_keyboard">Dokunmatik Klavye</span>
+                    </button>
+                    <div class="spacer"></div>
+                    <button type="button" class="btn-secondary" data-close="modalSetup" data-i18n="setup_cancel">İptal</button>
+                    <button type="submit" class="btn-primary" data-i18n="setup_start_game">Oyunu Başlat</button>
+                </div>
+
+                <div id="touchKeyboardContainer" class="touch-keyboard hidden"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: GAME ENDED / CONFIRMATION POPUP -->
+    <div class="modal-backdrop hidden" id="modalGamePopup">
+        <div class="modal-card modal-popup-card" role="dialog" aria-modal="true">
+            <div class="popup-icon" id="popupIcon">🏆</div>
+            <h2 class="popup-title" id="popupTitle">Tebrikler!</h2>
+            <p class="popup-summary" id="popupSummary"></p>
+            <div class="popup-db-badge hidden" id="popupDbBadge"></div>
+            <div class="popup-actions" id="popupActions"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: LEADERBOARD & MATCH HISTORY -->
+    <div class="modal-backdrop hidden" id="modalLeaderboard">
+        <div class="modal-card modal-wide-card" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h2 data-i18n="lb_title">Öğrenci Skor Tablosu ve Maç Kayıtları</h2>
+                <button type="button" class="modal-close" data-close="modalLeaderboard">✕</button>
+            </div>
+            <div class="modal-body lb-body">
+                <div class="lb-toolbar">
+                    <div class="lb-tabs">
+                        <button type="button" class="lb-tab active" data-tab="students" data-i18n="lb_tab_students">Öğrenci Sıralaması</button>
+                        <button type="button" class="lb-tab" data-tab="matches" data-i18n="lb_tab_matches">Maç Geçmişi (Kim Kazandı / Kaybetti)</button>
+                    </div>
+                    <div class="lb-controls">
+                        <select id="lbFilterClassroom" aria-label="Sınıf Filtresi"></select>
+                        <select id="lbFilterMode" aria-label="Mod Filtresi">
+                            <option value="ALL">Tüm Modlar</option>
+                            <option value="duel">Düello (2 Öğrenci)</option>
+                            <option value="single">Bilgisayara Karşı</option>
+                            <option value="timed">Meydan Okuma</option>
+                        </select>
+                        <input type="search" id="lbSearchInput" placeholder="Öğrenci adı ara...">
+                    </div>
+                </div>
+
+                <div class="lb-stats-strip">
+                    <div class="lb-stat"><span data-i18n="lb_stat_total_matches">Toplam Maç</span>: <strong id="lbStatMatches">0</strong></div>
+                    <div class="lb-stat"><span data-i18n="lb_stat_total_students">Farklı Öğrenci</span>: <strong id="lbStatStudents">0</strong></div>
+                    <div class="lb-stat"><span data-i18n="lb_stat_pending_sync">Senkron Bekleyen</span>: <strong id="lbStatPending">0</strong></div>
+                    <div class="spacer"></div>
+                    <button type="button" class="btn-small" id="btnLbSync">☁️ <span data-i18n="lb_sync_now">Bekleyenleri Senkronize Et</span></button>
+                    <button type="button" class="btn-small" id="btnLbRefresh">🔄 <span data-i18n="lb_refresh">Yenile</span></button>
+                    <button type="button" class="btn-small btn-green" id="btnLbExport">📥 <span data-i18n="lb_export_csv">Excel / CSV İndir</span></button>
+                    <button type="button" class="btn-small btn-danger" id="btnLbClear">🗑️ <span data-i18n="lb_clear_local">Kayıtları Temizle</span></button>
+                </div>
+
+                <div class="lb-table-wrap" id="lbTableWrap"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: TEACHER / FIREBASE SETTINGS -->
+    <div class="modal-backdrop hidden" id="modalTeacher">
+        <div class="modal-card modal-wide-card" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h2 data-i18n="cfg_title">Öğretmen Paneli & Firebase Veritabanı Ayarları</h2>
+                <button type="button" class="modal-close" data-close="modalTeacher">✕</button>
+            </div>
+            <div class="modal-body teacher-body">
+                <div class="cfg-status-banner" id="cfgStatusBanner">
+                    <span class="db-dot offline" id="cfgStatusDot"></span>
+                    <strong id="cfgStatusText">Yerel Mod</strong>
+                </div>
+
+                <p class="cfg-desc" data-i18n="cfg_desc">
+                    Okuldaki tüm Pardus akıllı tahtaların aynı veritabanına kayıt yapması için Firebase projenizin Web yapılandırma (firebaseConfig) bilgisini aşağıya yapıştırın.
+                </p>
+
+                <details class="cfg-guide">
+                    <summary>📘 2 Dakikada Ücretsiz Firebase Kurulum Adımları (Tüm Tahtalar İçin Ortak Veritabanı)</summary>
+                    <ol>
+                        <li><strong>console.firebase.google.com</strong> adresine Google hesabınızla girip <em>Add project</em> ile bir proje oluşturun (ör. <code>carpanga-okul</code>).</li>
+                        <li>Sol menüden <strong>Build → Firestore Database → Create database</strong> seçin, test/üretim modunda açın ve <strong>Rules</strong> sekmesinden <code>carpanga_matches</code> koleksiyonu için okuma/yazmaya izin verin (ayrıntılı kural kodu README.md içindedir).</li>
+                        <li>Sol üst çark ikonundan <strong>Project settings → Your apps → Web (&lt;/&gt;)</strong> ekleyin ve çıkan <code>firebaseConfig</code> nesnesini kopyalayıp aşağıya yapıştırın.</li>
+                        <li>Kalıcı olması için aynı config'i GitHub reponuzdaki <code>js/firebase-config.js</code> dosyasına da kaydedebilirsiniz veya aşağıdaki <strong>Kurulum Linki Kopyala</strong> butonuyla tüm tahtalara tek linkten aktarabilirsiniz.</li>
+                    </ol>
+                </details>
+
+                <div class="form-group">
+                    <label for="txtFirebaseConfig" data-i18n="cfg_paste_label">Firebase Config (JSON veya JS kodu yapıştırabilirsiniz)</label>
+                    <textarea id="txtFirebaseConfig" rows="5" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="inputTeacherPin" data-i18n="cfg_pin_label">Öğretmen PIN Kodu (Silme koruması)</label>
+                        <input type="password" id="inputTeacherPin" maxlength="12" placeholder="Varsayılan: 1234">
+                    </div>
+                    <div class="form-group cfg-feedback-box">
+                        <div class="cfg-feedback hidden" id="cfgFeedback"></div>
+                    </div>
+                </div>
+
+                <div class="teacher-actions">
+                    <button type="button" class="btn-primary" id="btnCfgSaveTest" data-i18n="cfg_save_test">Kaydet ve Bağlantıyı Test Et</button>
+                    <button type="button" class="btn-secondary" id="btnCfgCopyLink">🔗 <span data-i18n="cfg_copy_share_link">Diğer Tahtalar İçin Kurulum Linki Kopyala</span></button>
+                    <button type="button" class="btn-secondary btn-danger-outline" id="btnCfgReset" data-i18n="cfg_reset_config">Varsayılana Sıfırla</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script defer src="js/firebase-config.js"></script>
+    <script defer src="js/i18n.js"></script>
+    <script defer src="js/sound.js"></script>
+    <script defer src="js/game-engine.js"></script>
+    <script defer src="js/tutorial.js"></script>
+    <script defer src="js/db.js"></script>
+    <script defer src="js/keyboard.js"></script>
+    <script defer src="js/app.js"></script>
+</body>
+</html>
