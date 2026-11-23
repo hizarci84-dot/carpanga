@@ -3,5 +3,32 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json",
     "location": "eur3"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/.git/**",
+      "**/.github/**",
+      "**/.firebase/**",
+      "**/node_modules/**",
+      "carpanga.zip",
+      "firestore.rules",
+      "firestore.indexes.json",
+      "README.md",
+      "tests/**"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(eot|otf|ttf|ttc|woff|woff2)",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
+      }
+    ]
   }
 }
