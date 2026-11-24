@@ -442,12 +442,9 @@
         async fetchAllMatches() {
             const local = this.getLocalMatches();
             const map = new Map();
-            for (const item of local) {
-                map.set(item.id, item);
-            }
-
             let fromCloud = false;
             const ready = await this.initCloud();
+
             if (ready) {
                 try {
                     // Best-effort sync pending first
@@ -461,13 +458,28 @@
                             map.set(data.id, { ...data, synced: true });
                         }
                     });
+                    // Keep only unsynced pending records locally; do not resurrect deleted cloud records
+                    for (const pend of this.getPendingSync()) {
+                        if (pend && pend.id && !map.has(pend.id)) {
+                            map.set(pend.id, pend);
+                        }
+                    }
                     fromCloud = true;
                 } catch (err) {
                     this.lastError = err && err.message ? err.message : String(err);
                 }
             }
 
+            if (!fromCloud) {
+                for (const item of local) {
+                    if (item && item.id) map.set(item.id, item);
+                }
+            }
+
             const merged = Array.from(map.values()).sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+            if (fromCloud) {
+                writeJsonStorage(STORAGE_KEYS.LOCAL_MATCHES, merged.slice(0, 200));
+            }
             return { matches: merged, fromCloud };
         }
 
