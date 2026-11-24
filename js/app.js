@@ -64,10 +64,10 @@
             'btnMenuDuel', 'btnMenuSingle', 'btnMenuTimed', 'btnMenuTutorial',
             'btnMenuLeaderboard', 'btnMenuTeacher', 'menuStatMatches', 'menuStatStudents',
             'menuMiniLeaders', 'menuPendingBadge',
-            'arenaLayout', 'panelP1', 'panelP2', 'p1DisplayName', 'p1SubInfo', 'p1TurnBadge',
-            'p2DisplayName', 'p2SubInfo', 'p2TurnBadge', 'padP1', 'padP2', 'boardWrapper', 'boardGrid',
+            'arenaLayout', 'panelP1', 'panelP2', 'p1DisplayName', 'p1SubInfo', 'p1TurnBadge', 'p1TimerTrack', 'p1TimerFill',
+            'p2DisplayName', 'p2SubInfo', 'p2TurnBadge', 'p2TimerTrack', 'p2TimerFill', 'padP1', 'padP2', 'boardWrapper', 'boardGrid',
             'tutorialFullOverlay', 'tutorialFullText', 'tutorialContinueHint', 'btnOverlayReturnHome',
-            'helperBar', 'helperBarText', 'btnTutorialNext', 'tutorialExitBar', 'tutorialStepBadge', 'btnTutorialReturnHome', 'hintsBar',
+            'helperBar', 'helperBarText', 'helperTimerPill', 'helperTimerValue', 'btnTutorialNext', 'tutorialExitBar', 'tutorialStepBadge', 'btnTutorialReturnHome', 'hintsBar',
             'btnHintAvailable', 'btnHintFatal', 'btnHintAuto',
             'lblHintAvailable', 'lblHintFatal', 'lblHintAuto',
             'modalSetup', 'setupModalTitle', 'setupForm', 'selectClassGrade', 'selectClassSection',
@@ -427,6 +427,9 @@
         if (mode === 'tutorial') {
             dom.hintsBar.classList.add('hidden');
             dom.timerBadge.classList.add('hidden');
+            dom.helperTimerPill.classList.add('hidden');
+            dom.p1TimerTrack.classList.add('hidden');
+            dom.p2TimerTrack.classList.add('hidden');
             dom.helperBar.classList.add('tutorial-active');
             dom.btnTutorialNext.classList.remove('hidden');
             dom.tutorialExitBar.classList.remove('hidden');
@@ -437,11 +440,14 @@
             return;
         }
 
-        dom.hintsBar.classList.remove('hidden');
+        dom.hintsBar.classList.toggle('hidden', mode !== 'single');
         dom.helperBar.classList.remove('tutorial-active');
         dom.btnTutorialNext.classList.add('hidden');
         dom.tutorialExitBar.classList.add('hidden');
         dom.timerBadge.classList.remove('hidden');
+        dom.helperTimerPill.classList.remove('hidden');
+        dom.p1TimerTrack.classList.remove('hidden');
+        dom.p2TimerTrack.classList.remove('hidden');
 
         switchView('game');
         buildBoardAndPads();
@@ -559,16 +565,18 @@
             updatePadButtons(dom.padP1, 1, eng.status === 'playing' && eng.currentPlayer === 1 && !isBotTurn, avail, prevMover);
             updatePadButtons(dom.padP2, 2, eng.status === 'playing' && eng.currentPlayer === 2 && !isBotTurn, avail, prevMover);
 
-            // Hint buttons state
-            const pHints = eng.players[eng.currentPlayer];
-            const hintsDisabled = eng.status !== 'playing' || isBotTurn;
-            dom.btnHintAvailable.disabled = hintsDisabled || (pHints.hintAvailable <= 0 && pHints.usedAt.available !== eng.turnNumber);
-            dom.btnHintFatal.disabled = hintsDisabled || (pHints.hintDangerous <= 0 && pHints.usedAt.fatal !== eng.turnNumber);
-            dom.btnHintAuto.disabled = hintsDisabled || (pHints.hintAuto <= 0 && pHints.usedAt.auto !== eng.turnNumber);
+            // Hint buttons state (shown only in "Bilgisayara Karşı" / single mode)
+            if (state.mode === 'single') {
+                const pHints = eng.players[eng.currentPlayer];
+                const hintsDisabled = eng.status !== 'playing' || isBotTurn;
+                dom.btnHintAvailable.disabled = hintsDisabled || (pHints.hintAvailable <= 0 && pHints.usedAt.available !== eng.turnNumber);
+                dom.btnHintFatal.disabled = hintsDisabled || (pHints.hintDangerous <= 0 && pHints.usedAt.fatal !== eng.turnNumber);
+                dom.btnHintAuto.disabled = hintsDisabled || (pHints.hintAuto <= 0 && pHints.usedAt.auto !== eng.turnNumber);
 
-            dom.lblHintAvailable.textContent = `${t('maingame_hint_available')} x ${pHints.hintAvailable}`;
-            dom.lblHintFatal.textContent = `${t('maingame_hint_fatal')} x ${pHints.hintDangerous}`;
-            dom.lblHintAuto.textContent = `${t('maingame_hint_auto')} x ${pHints.hintAuto}`;
+                dom.lblHintAvailable.textContent = `${t('maingame_hint_available')} x ${pHints.hintAvailable}`;
+                dom.lblHintFatal.textContent = `${t('maingame_hint_fatal')} x ${pHints.hintDangerous}`;
+                dom.lblHintAuto.textContent = `${t('maingame_hint_auto')} x ${pHints.hintAuto}`;
+            }
             updateTimerPill();
         }
     }
@@ -701,23 +709,36 @@
         const sec = Math.max(0, state.turnRemainingSec);
         const secText = t('hud_timer_seconds', { sec });
         const urgent = sec <= 7;
+        const pct = Math.max(0, Math.min(100, Math.round((sec / TURN_SECONDS) * 100)));
 
         dom.timerValue.textContent = secText;
         dom.timerBadge.classList.toggle('urgent', urgent);
+        dom.helperTimerValue.textContent = secText;
+        dom.helperTimerPill.classList.toggle('urgent', urgent);
 
         if (state.mode === 'tutorial' || !state.engine) {
             dom.p1TurnBadge.textContent = t('hud_turn_label').toUpperCase();
             dom.p2TurnBadge.textContent = t('hud_turn_label').toUpperCase();
             dom.p1TurnBadge.classList.remove('urgent');
             dom.p2TurnBadge.classList.remove('urgent');
+            dom.p1TimerFill.style.width = '100%';
+            dom.p2TimerFill.style.width = '100%';
+            dom.p1TimerFill.classList.remove('urgent');
+            dom.p2TimerFill.classList.remove('urgent');
             return;
         }
 
         const isP1 = state.engine.currentPlayer === 1;
+        const isPlaying = state.engine.status === 'playing';
         dom.p1TurnBadge.textContent = isP1 ? `⏱ ${secText}` : t('hud_turn_label').toUpperCase();
         dom.p2TurnBadge.textContent = !isP1 ? `⏱ ${secText}` : t('hud_turn_label').toUpperCase();
-        dom.p1TurnBadge.classList.toggle('urgent', isP1 && urgent && state.engine.status === 'playing');
-        dom.p2TurnBadge.classList.toggle('urgent', !isP1 && urgent && state.engine.status === 'playing');
+        dom.p1TurnBadge.classList.toggle('urgent', isP1 && urgent && isPlaying);
+        dom.p2TurnBadge.classList.toggle('urgent', !isP1 && urgent && isPlaying);
+
+        dom.p1TimerFill.style.width = isP1 ? `${pct}%` : '0%';
+        dom.p2TimerFill.style.width = !isP1 ? `${pct}%` : '0%';
+        dom.p1TimerFill.classList.toggle('urgent', isP1 && urgent && isPlaying);
+        dom.p2TimerFill.classList.toggle('urgent', !isP1 && urgent && isPlaying);
     }
 
     // ==================== GAME END & RECORDING ====================
@@ -927,8 +948,8 @@
 
     // ==================== HINTS ====================
     function handleHintClick(type) {
-        if (!state.engine || state.engine.status !== 'playing' || state.mode === 'tutorial') return;
-        const isBotTurn = (state.mode === 'single' || state.mode === 'timed') && state.engine.currentPlayer === 2;
+        if (!state.engine || state.engine.status !== 'playing' || state.mode !== 'single') return;
+        const isBotTurn = state.engine.currentPlayer === 2;
         if (isBotTurn) return;
 
         const res = state.engine.useHint(type);

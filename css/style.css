@@ -165,16 +165,30 @@ button > * {
 }
 
 .status-pill.timer {
-    background: #fff7ed;
-    color: #c2410c;
-    border-color: #fdba74;
+    background: linear-gradient(135deg, #fff7ed, #ffedd5);
+    color: #9a3412;
+    border: 2px solid #f97316;
+    font-size: 1.25rem;
+    font-weight: 800;
+    padding: 6px 18px;
+    min-width: 132px;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(249, 115, 22, 0.22);
+    font-variant-numeric: tabular-nums;
+}
+
+.status-pill.timer strong {
+    font-size: 1.42rem;
+    font-weight: 900;
+    letter-spacing: 0.02em;
 }
 
 .status-pill.timer.urgent {
-    background: #fef2f2;
-    color: #dc2626;
-    border-color: #f87171;
-    animation: pulseSoft 0.8s infinite;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #ffffff;
+    border-color: #991b1b;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.28);
+    animation: pulseSoft 0.7s infinite;
 }
 
 .topbar-actions {
@@ -528,7 +542,7 @@ button > * {
     max-width: 1520px;
     height: 100%;
     display: grid;
-    grid-template-columns: minmax(195px, 270px) minmax(0, 1fr) minmax(195px, 270px);
+    grid-template-columns: minmax(230px, 305px) minmax(0, 1fr) minmax(230px, 305px);
     gap: 18px;
     align-items: stretch;
 }
@@ -611,26 +625,64 @@ button > * {
 
 .turn-indicator {
     display: none;
-    font-size: 0.78rem;
-    font-weight: 800;
-    padding: 4px 9px;
+    font-size: 1.24rem;
+    font-weight: 900;
+    padding: 6px 14px;
     border-radius: 999px;
     background: #ffffff;
-    color: var(--text-main);
-    letter-spacing: 0.03em;
+    color: #c2410c;
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.18);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
     flex-shrink: 0;
 }
 
 .turn-indicator.urgent {
-    background: #fef2f2;
-    color: #dc2626;
-    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.75);
-    animation: pulseSoft 0.8s infinite;
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #fecaca;
+    box-shadow: 0 0 0 3px rgba(254, 202, 202, 0.65);
+    animation: pulseSoft 0.7s infinite;
 }
 
 .player-panel.active-turn .turn-indicator {
     display: inline-block;
+}
+
+.player-timer-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.player-timer-fill {
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background: #f97316;
+    transition: width 0.35s linear, background-color 0.2s;
+}
+
+.p1-panel.active-turn .player-timer-fill {
+    background: linear-gradient(90deg, var(--p1-color), #22c55e);
+}
+
+.p2-panel.active-turn .player-timer-fill {
+    background: linear-gradient(90deg, var(--p2-color), #f97316);
+}
+
+.player-panel.inactive-turn .player-timer-fill {
+    width: 0% !important;
+    background: #cbd5e1;
+}
+
+.player-timer-fill.urgent {
+    background: #dc2626 !important;
 }
 
 .digit-pad {
@@ -912,6 +964,34 @@ button > * {
     border-color: #fcd34d;
     color: #92400e;
     cursor: pointer;
+}
+
+.helper-timer-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #fff7ed, #ffedd5);
+    color: #9a3412;
+    border: 2px solid #f97316;
+    font-size: 1.25rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.helper-timer-pill strong {
+    font-size: 1.38rem;
+    font-weight: 900;
+}
+
+.helper-timer-pill.urgent {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #ffffff;
+    border-color: #991b1b;
+    animation: pulseSoft 0.7s infinite;
 }
 
 .tutorial-next-btn {
