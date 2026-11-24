@@ -46,6 +46,8 @@
     let pinLockoutUntilMs = 0;
     let pinLockoutTimerId = null;
 
+    const TURN_SECONDS = 30;
+
     const dom = {};
 
     function $(id) {
@@ -62,8 +64,8 @@
             'btnMenuDuel', 'btnMenuSingle', 'btnMenuTimed', 'btnMenuTutorial',
             'btnMenuLeaderboard', 'btnMenuTeacher', 'menuStatMatches', 'menuStatStudents',
             'menuMiniLeaders', 'menuPendingBadge',
-            'arenaLayout', 'panelP1', 'panelP2', 'p1DisplayName', 'p1SubInfo',
-            'p2DisplayName', 'p2SubInfo', 'padP1', 'padP2', 'boardWrapper', 'boardGrid',
+            'arenaLayout', 'panelP1', 'panelP2', 'p1DisplayName', 'p1SubInfo', 'p1TurnBadge',
+            'p2DisplayName', 'p2SubInfo', 'p2TurnBadge', 'padP1', 'padP2', 'boardWrapper', 'boardGrid',
             'tutorialFullOverlay', 'tutorialFullText', 'tutorialContinueHint', 'btnOverlayReturnHome',
             'helperBar', 'helperBarText', 'btnTutorialNext', 'tutorialExitBar', 'tutorialStepBadge', 'btnTutorialReturnHome', 'hintsBar',
             'btnHintAvailable', 'btnHintFatal', 'btnHintAuto',
@@ -428,6 +430,7 @@
             dom.helperBar.classList.add('tutorial-active');
             dom.btnTutorialNext.classList.remove('hidden');
             dom.tutorialExitBar.classList.remove('hidden');
+            updateTimerPill();
             switchView('game');
             buildBoardAndPads();
             initTutorialFlow();
@@ -438,15 +441,12 @@
         dom.helperBar.classList.remove('tutorial-active');
         dom.btnTutorialNext.classList.add('hidden');
         dom.tutorialExitBar.classList.add('hidden');
-        dom.timerBadge.classList.toggle('hidden', mode !== 'timed');
+        dom.timerBadge.classList.remove('hidden');
 
         switchView('game');
         buildBoardAndPads();
         renderGameUI();
-
-        if (mode === 'timed') {
-            resetTurnTimer();
-        }
+        resetTurnTimer();
 
         if ((mode === 'single' || mode === 'timed') && state.engine.currentPlayer === 2) {
             scheduleBotMove();
@@ -569,6 +569,7 @@
             dom.lblHintAvailable.textContent = `${t('maingame_hint_available')} x ${pHints.hintAvailable}`;
             dom.lblHintFatal.textContent = `${t('maingame_hint_fatal')} x ${pHints.hintDangerous}`;
             dom.lblHintAuto.textContent = `${t('maingame_hint_auto')} x ${pHints.hintAuto}`;
+            updateTimerPill();
         }
     }
 
@@ -641,7 +642,7 @@
             return;
         }
 
-        if (state.mode === 'timed') {
+        if (state.mode !== 'tutorial') {
             resetTurnTimer();
         }
 
@@ -664,13 +665,16 @@
 
     function resetTurnTimer() {
         if (state.turnTimerId) clearInterval(state.turnTimerId);
-        state.turnRemainingSec = 30;
+        state.turnRemainingSec = TURN_SECONDS;
         updateTimerPill();
 
         state.turnTimerId = setInterval(() => {
-            if (!state.engine || state.engine.status !== 'playing') {
+            if (!state.engine || state.engine.status !== 'playing' || state.mode === 'tutorial') {
                 clearInterval(state.turnTimerId);
                 state.turnTimerId = null;
+                return;
+            }
+            if (document.querySelector('.modal-backdrop:not(.hidden)')) {
                 return;
             }
             state.turnRemainingSec -= 1;
@@ -686,19 +690,38 @@
                 handleGameEnded({
                     winnerSide,
                     winningLine: null,
-                    timeout: true
+                    timeout: true,
+                    timedOutPlayer
                 });
             }
         }, 1000);
     }
 
     function updateTimerPill() {
-        dom.timerValue.textContent = t('hud_timer_seconds', { sec: Math.max(0, state.turnRemainingSec) });
-        dom.timerBadge.classList.toggle('urgent', state.turnRemainingSec <= 7);
+        const sec = Math.max(0, state.turnRemainingSec);
+        const secText = t('hud_timer_seconds', { sec });
+        const urgent = sec <= 7;
+
+        dom.timerValue.textContent = secText;
+        dom.timerBadge.classList.toggle('urgent', urgent);
+
+        if (state.mode === 'tutorial' || !state.engine) {
+            dom.p1TurnBadge.textContent = t('hud_turn_label').toUpperCase();
+            dom.p2TurnBadge.textContent = t('hud_turn_label').toUpperCase();
+            dom.p1TurnBadge.classList.remove('urgent');
+            dom.p2TurnBadge.classList.remove('urgent');
+            return;
+        }
+
+        const isP1 = state.engine.currentPlayer === 1;
+        dom.p1TurnBadge.textContent = isP1 ? `⏱ ${secText}` : t('hud_turn_label').toUpperCase();
+        dom.p2TurnBadge.textContent = !isP1 ? `⏱ ${secText}` : t('hud_turn_label').toUpperCase();
+        dom.p1TurnBadge.classList.toggle('urgent', isP1 && urgent && state.engine.status === 'playing');
+        dom.p2TurnBadge.classList.toggle('urgent', !isP1 && urgent && state.engine.status === 'playing');
     }
 
     // ==================== GAME END & RECORDING ====================
-    async function handleGameEnded({ winnerSide, winningLine, timeout }) {
+    async function handleGameEnded({ winnerSide, winningLine, timeout, timedOutPlayer }) {
         clearTimers();
 
         if (winningLine && winningLine.length === 3) {
@@ -735,9 +758,15 @@
             titleText = t('game_ended_draw');
         } else if (state.mode === 'duel') {
             Sound.play('win');
-            titleText = winnerSide === 1
-                ? t('game_ended_blue_won', { name: state.player1Name })
-                : t('game_ended_red_won', { name: state.player2Name });
+            if (timeout) {
+                const loserName = timedOutPlayer === 1 ? state.player1Name : state.player2Name;
+                const winnerName = winnerSide === 1 ? state.player1Name : state.player2Name;
+                titleText = t('game_ended_duel_timeout', { loser: loserName, winner: winnerName });
+            } else {
+                titleText = winnerSide === 1
+                    ? t('game_ended_blue_won', { name: state.player1Name })
+                    : t('game_ended_red_won', { name: state.player2Name });
+            }
         } else {
             if (winnerSide === 1) {
                 Sound.play('win');
